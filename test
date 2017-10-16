@@ -1,0 +1,66 @@
+CMD:auninviteoff(playerid, params[])
+{
+    if(gPlayerLogged[playerid] == 0) return SendClientMessage(playerid, COLOR_LIGHTRED, "You need to login first.");
+	if(PlayerInfo[playerid][pAdmin] >= 4)
+	{
+		new id, fp,sendername[25],string[MAX_STRING],reason[64],rank,ftime,faction,idd,query[500],string2[500];
+		if(sscanf(params, "s[25]is[64]", id, fp, reason)) return SCM(playerid,COLOR_WHITE,"{FF9900}Scrie: {33CCFF}/auninviteoff <Name> <FPunish> <Reason>");
+		format(string, sizeof(string), "SELECT `Member` FROM `users` WHERE LOWER(name) = LOWER('%s') LIMIT 1", id);
+		new Cache: r = mysql_query ( SQL, string );
+		if ( cache_get_row_count ( ) )
+		{
+			new fostfactiune = cache_get_row_int ( 0, 0 );
+			cache_delete ( r );
+			if(fostfactiune == 0)
+			{
+				SendClientMessage(playerid, COLOR_WHITE, "Acest jucator nu este intr-o factiune.");
+				return 1;
+			}
+			format(query, sizeof(query), "SELECT * FROM `users` WHERE `name`='%s'",id);
+			new Cache: membresult = mysql_query(SQL, query);
+			for(new i, j = cache_get_row_count (); i != j; ++i)
+			{
+				idd = cache_get_field_content_int(i, "id");
+				rank = cache_get_field_content_int(i, "Rank");
+				ftime = cache_get_field_content_int(i, "FactionTime");
+				faction = cache_get_field_content_int(i, "id");
+			}
+			cache_delete(membresult);
+			if(fp == 0)
+			{
+   				GetPlayerName(playerid, sendername, sizeof(sendername));
+			    format(string, sizeof(string), "* L-ai dat pe %s afara din factiunea sa fara FP.", id);
+				SendClientMessage(playerid, COLOR_LIGHTBLUE, string);
+				mysql_format(SQL,string,sizeof(string),"UPDATE users SET `Team`='3',`Member`='0',`Leader`='0',`Rank`='0',`Model`='250',`FPunish`='0',`FWarn`='0',`FactionTime`='0',`ALeader`='0' WHERE `name`='%s'",id);
+				mysql_tquery(SQL,string,"","");
+				format(string, sizeof(string), "Ai fost demis de Admin %s din factiunea din care faceai parte %s (rank %d) dupa %d zile, fara FP. Motiv: %s.",sendername,NumeFactiune(PlayerInfo[id][pMember]),PlayerInfo[id][pRank],PlayerInfo[id][pFactionTime],reason);
+				mysql_format(SQL, query, sizeof(query), "INSERT INTO `emails` (`playerid`,`Message`) VALUES('%d','%s')",PlayerInfo[id][pSQLID],string);
+   	            mysql_tquery(SQL,query,"","");
+				format(string2, sizeof(string2), "%s was uninvited by Admin %s from faction %s (rank %d) after %d days, without FP. Reason: %s.",id,sendername,DynamicFactions[faction][fName],rank,ftime,reason);
+				mysql_format(SQL, query, sizeof(query), "INSERT INTO faction_logs (`text`,`player`,`leader`) VALUES ('%s','%d','%d')", string2, idd, PlayerInfo[playerid][pSQLID]);
+				mysql_tquery(SQL,query,"","");
+			}
+			else if(fp >= 1)
+			{
+   				GetPlayerName(playerid, sendername, sizeof(sendername));
+			    format(string, sizeof(string), "* L-ai dat pe %s afara din factiunea sa cu %d FP.", id,fp);
+				SendClientMessage(playerid, COLOR_LIGHTBLUE, string);
+				mysql_format(SQL,string,sizeof(string),"UPDATE users SET `Team`='3',`Member`='0',`Leader`='0',`Rank`='0',`Model`='250',`FPunish`='%d',`FWarn`='0',`FactionTime`='0',`ALeader`='0' WHERE `name`='%s'",fp,id);
+				mysql_tquery(SQL,string,"","");
+				format(string, sizeof(string), "Ai fost demis de Admin %s din factiunea din care faceai parte %s (rank %d) dupa %d zile, cu %d FP. Motiv: %s.",sendername,NumeFactiune(PlayerInfo[id][pMember]),PlayerInfo[id][pRank],PlayerInfo[id][pFactionTime],fp,reason);
+				mysql_format(SQL, query, sizeof(query), "INSERT INTO `emails` (`playerid`,`Message`) VALUES('%d','%s')",PlayerInfo[id][pSQLID],string);
+   	            mysql_tquery(SQL,query,"","");
+				format(string2, sizeof(string2), "%s was uninvited by Admin %s from faction %s (rank %d) after %d days, with %d FP. Reason: %s.",id,sendername,DynamicFactions[faction][fName],rank,ftime,fp,reason);
+				mysql_format(SQL, query, sizeof(query), "INSERT INTO faction_logs (`text`,`player`,`leader`) VALUES ('%s','%d','%d')", string2, idd, PlayerInfo[playerid][pSQLID]);
+				mysql_tquery(SQL,query,"","");
+			}
+		}
+		else
+		{
+			SendClientMessage(playerid, COLOR_WHITE, "Acest jucator nu exista.");
+			cache_delete ( r );
+			return 1;
+		}
+	}
+	return 1;
+}
